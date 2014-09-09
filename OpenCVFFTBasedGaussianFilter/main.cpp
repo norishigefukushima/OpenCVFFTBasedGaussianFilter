@@ -51,6 +51,17 @@ using namespace std;
 #pragma comment(lib, "opencv_calib3d"CV_VERSION_NUMBER".lib")
 #endif
 
+#define SIGMA_CLIP 6.0f
+inline int sigma2radius(float sigma)
+{
+	return (int)(SIGMA_CLIP*sigma+0.5f);
+}
+
+inline float radius2sigma(int r)
+{
+	return (int)(r/SIGMA_CLIP+0.5f);
+}
+
 void fftShift(Mat magI)
 {
 
@@ -96,6 +107,7 @@ void computeIDFT(Mat& complex, Mat& dest)
 {
 	idft(complex, dest,DFT_REAL_OUTPUT+DFT_SCALE);
 
+	//following is same process of idft:DFT_REAL_OUTPUT+DFT_SCALE
 	//dft(complex, work, DFT_INVERSE + DFT_SCALE);
 	//Mat planes[] = {Mat::zeros(complex.size(), CV_32F), Mat::zeros(complex.size(), CV_32F)};
 	//split(work, planes);                // planes[0] = Re(DFT(I)), planes[1] = Im(DFT(I))
@@ -107,24 +119,38 @@ void computeDFT(Mat& image, Mat& dest)
 	Mat padded;                            //expand input image to optimal size
     int m = getOptimalDFTSize( image.rows );
     int n = getOptimalDFTSize( image.cols ); // on the border add zero values
-    copyMakeBorder(image, padded, 0, m - image.rows, 0, n - image.cols, BORDER_CONSTANT, Scalar::all(0));
+    
+	copyMakeBorder(image, padded, 0, m - image.rows, 0, n - image.cols, BORDER_REPLICATE);
 
-	Mat planes[] = {Mat_<float>(padded), Mat::zeros(padded.size(), CV_32F)};
-    merge(planes, 2, dest);         // Add to the expanded another plane with zeros
+	Mat imgf;
+	image.convertTo(imgf,CV_32F);	
+	dft(imgf, dest, DFT_COMPLEX_OUTPUT);  // furier transform
 
-	dft(dest, dest, DFT_COMPLEX_OUTPUT);  // furier transform
+	//other implimentation
+	//Mat planes[] = {Mat_<float>(padded), Mat::zeros(padded.size(), CV_32F)};
+    //merge(planes, 2, dest);         // Add to the expanded another plane with zeros
+	//dft(dest, dest, DFT_COMPLEX_OUTPUT);  // furier transform
 }
 
-Mat createGaussFilterMask(Size imsize, int radius, bool normalization, bool invert)
+
+Mat createCircleMask(Size imsize, int radius)
+{
+	Mat ret;
+	Mat mk = Mat::zeros(imsize,CV_8U);
+	circle(mk, Point(mk.cols/2,mk.rows/2), radius,Scalar::all(1.f),CV_FILLED);
+	mk.convertTo(ret,CV_32F,1.0);
+
+	return ret;
+}
+
+Mat createGaussFilterMask(Size imsize, int radius)
 {
 	// call openCV gaussian kernel generator
-	//double sigma = -1;
-	double sigma = radius/6.0;
+	double sigma = radius2sigma(radius);
 	Mat kernelX = getGaussianKernel(2*radius+1, sigma, CV_32F);
 	Mat kernelY = getGaussianKernel(2*radius+1, sigma, CV_32F);
 	// create 2d gaus
 	Mat kernel = kernelX * kernelY.t();
-	//kernel*=255;
 
 	int w = imsize.width-kernel.cols;
 	int h = imsize.height-kernel.rows;
@@ -137,16 +163,6 @@ Mat createGaussFilterMask(Size imsize, int radius, bool normalization, bool inve
 
 	Mat ret;
 	copyMakeBorder(kernel,ret,t,b,l,r,BORDER_CONSTANT,Scalar::all(0));
-
-	// transform mask to range 0..1
-	if(normalization) {
-		normalize(ret,ret, 0, 1, NORM_MINMAX);
-	}
-
-	// invert mask
-	if(invert) {
-		ret = Mat::ones(ret.size(), CV_32F) - ret;
-	}
 
 	return ret;
 }
@@ -201,7 +217,7 @@ void deconvoluteWiener(Mat& img, Mat& kernel,float snr)
 	}
 }
 
-void fftTest(Mat& image)
+void fftConvolutionTest(Mat& image)
 {
 	Mat imgf;image.convertTo(imgf,CV_32F);
 
@@ -210,36 +226,48 @@ void fftTest(Mat& image)
 
 	int a=0;createTrackbar("a",wname,&a,100);
 	int r = 20; createTrackbar("r",wname,&r,500);
-
+	int sw = 0; createTrackbar("sw",wname,&sw,2);
 	int key = 0;
 	Mat show;
 	Mat dftmat;
 	Mat destf;
 	while(key!='q')
 	{
-		GaussianBlur(imgf,destf,Size(2*r+1,2*r+1),r/6.0);
+		//reference Gaussian filter of FIR
+		GaussianBlur(imgf,destf,Size(2*r+1,2*r+1),radius2sigma(r));
 
 		computeDFT(image,dftmat);
 		
 		Mat mask;
-		/*
-		Mat mk = Mat::zeros(dftmat.size(),CV_8U);
-		circle(mk, Point(mk.cols/2,mk.rows/2), r,Scalar::all(255),CV_FILLED);
-		mk.convertTo(mask,CV_32F,1.0/255.0);
-		*/
-		mask = createGaussFilterMask(dftmat.size(),r, false, false);
-		Mat gmask;
-		fftShift(mask);
-		computeDFT(mask,gmask);
-				
-		mulSpectrums(dftmat, gmask, dftmat, DFT_ROWS); // only DFT_ROWS accepted
-		//fftShift(dftmat);
+		Mat kernel;
+
+		if(sw == 0)
+		{
+			mask = createGaussFilterMask(dftmat.size(),r);
+			fftShift(mask);
+			computeDFT(mask,kernel);
+		}
+		else if(sw == 1)
+		{
+			mask = createCircleMask(dftmat.size(),r);
+			fftShift(mask);
+			vector<Mat> v;
+			v.push_back(mask);
+			v.push_back(Mat::zeros(dftmat.size(),CV_32FC1));
+			
+			merge(v,kernel);
+		}
+		else
+		{
+			kernel = Mat::ones(dftmat.size(),CV_32FC2);
+		}		
+		mulSpectrums(dftmat, kernel, dftmat, DFT_ROWS); // only DFT_ROWS accepted
 		imshowFFTSpectrum("spectrum filtered",dftmat);// show spectrum
 		
 		computeIDFT(dftmat,show);		// do inverse transform
 		
-		Mat dest;destf.convertTo(dest,CV_8U);
-
+		//for visualization
+		Mat dest; destf.convertTo(dest,CV_8U);
 		Mat showu;
 		show.convertTo(showu,CV_8U);
 		addWeighted(dest,a/100.0, showu, 1.0-a/100.0,0.0,dest);//0 fft, 1, FIR
@@ -250,7 +278,7 @@ void fftTest(Mat& image)
 }
 
 
-void deconvTest(Mat& image)
+void fftDeconvolutionTest(Mat& image)
 {
 	Mat imgf;image.convertTo(imgf,CV_32F);
 
@@ -266,38 +294,41 @@ void deconvTest(Mat& image)
 	Mat destf;
 	while(key!='q')
 	{
-		GaussianBlur(imgf,destf,Size(2*r+1,2*r+1),r/6.0);
+		//reference Gaussian filter of FIR
+		GaussianBlur(imgf,destf,Size(2*r+1,2*r+1),radius2sigma(r));
 
 		computeDFT(destf,dftmat);
 		
-		Mat mask;
-		mask = createGaussFilterMask(dftmat.size(),r, false, false);
-		Mat gmask;
+		Mat mask = createGaussFilterMask(dftmat.size(),r);
 		fftShift(mask);
-		computeDFT(mask,gmask);
-				
 
-		deconvolute(dftmat,gmask);
+		Mat kernel;
+		computeDFT(mask,kernel);//generate Gaussian Kernel
+				
+		deconvolute(dftmat,kernel);
 		imshowFFTSpectrum("inv spec",dftmat);
 
 		computeIDFT(dftmat,show);		// do inverse transform
+		
+		//for visualization
+		Mat dest;destf.convertTo(dest,CV_8U);
+
 		Mat showu;
 		show.convertTo(showu,CV_8U);
 		imshow("inv",showu);
-
-		computeIDFT(dftmat,show);		// do inverse transform
-		
-		Mat dest;destf.convertTo(dest,CV_8U);
-
 		addWeighted(dest,a/100.0, showu, 1.0-a/100.0,0.0,dest);//0 fft, 1, FIR		
 		imshow(wname,dest);
 		key = waitKey(1);
 	}
 }
+
 int main()
 {
 	Mat src = imread("lenna.png",0);
-	fftTest(src);
-	deconvTest(src);
+
+	fftConvolutionTest(src);//convolution test
+
+	fftDeconvolutionTest(src);//deconvolution test
+
 	return 0;
 }

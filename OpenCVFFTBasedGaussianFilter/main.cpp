@@ -1,54 +1,18 @@
 #include <opencv2/opencv.hpp>
-#include <opencv2/core/internal.hpp>
+
 using namespace cv;
 using namespace std; 
 
 #define CV_VERSION_NUMBER CVAUX_STR(CV_MAJOR_VERSION) CVAUX_STR(CV_MINOR_VERSION) CVAUX_STR(CV_SUBMINOR_VERSION)
 
 #ifdef _DEBUG
-#pragma comment(lib, "opencv_viz"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_videostab"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_video"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_ts"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_superres"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_stitching"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_photo"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_ocl"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_objdetect"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_nonfree"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_ml"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_legacy"CV_VERSION_NUMBER"d.lib")
 #pragma comment(lib, "opencv_imgproc"CV_VERSION_NUMBER"d.lib")
 #pragma comment(lib, "opencv_highgui"CV_VERSION_NUMBER"d.lib")
-//#pragma comment(lib, "opencv_haartraining_engine.lib")
-#pragma comment(lib, "opencv_gpu"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_flann"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_features2d"CV_VERSION_NUMBER"d.lib")
 #pragma comment(lib, "opencv_core"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_contrib"CV_VERSION_NUMBER"d.lib")
-#pragma comment(lib, "opencv_calib3d"CV_VERSION_NUMBER"d.lib")
 #else
-#pragma comment(lib, "opencv_viz"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_videostab"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_video"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_ts"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_superres"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_stitching"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_photo"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_ocl"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_objdetect"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_nonfree"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_ml"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_legacy"CV_VERSION_NUMBER".lib")
 #pragma comment(lib, "opencv_imgproc"CV_VERSION_NUMBER".lib")
 #pragma comment(lib, "opencv_highgui"CV_VERSION_NUMBER".lib")
-//#pragma comment(lib, "opencv_haartraining_engine.lib")
-#pragma comment(lib, "opencv_gpu"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_flann"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_features2d"CV_VERSION_NUMBER".lib")
 #pragma comment(lib, "opencv_core"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_contrib"CV_VERSION_NUMBER".lib")
-#pragma comment(lib, "opencv_calib3d"CV_VERSION_NUMBER".lib")
 #endif
 
 #define SIGMA_CLIP 6.0f
@@ -59,30 +23,29 @@ inline int sigma2radius(float sigma)
 
 inline float radius2sigma(int r)
 {
-	return (int)(r/SIGMA_CLIP+0.5f);
+	return (r/SIGMA_CLIP+0.5f);
 }
 
 void fftShift(Mat magI)
 {
-
-    // crop if it has an odd number of rows or columns
+	// crop if it has an odd number of rows or columns
 	magI = magI(Rect(0, 0, magI.cols & -2, magI.rows & -2));
 
 	int cx = magI.cols/2;
-    int cy = magI.rows/2;
+	int cy = magI.rows/2;
 
-    Mat q0(magI, Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
-    Mat q1(magI, Rect(cx, 0, cx, cy));  // Top-Right
-    Mat q2(magI, Rect(0, cy, cx, cy));  // Bottom-Left
-    Mat q3(magI, Rect(cx, cy, cx, cy)); // Bottom-Right
+	Mat q0(magI, Rect(0, 0, cx, cy));   // Top-Left - Create a ROI per quadrant
+	Mat q1(magI, Rect(cx, 0, cx, cy));  // Top-Right
+	Mat q2(magI, Rect(0, cy, cx, cy));  // Bottom-Left
+	Mat q3(magI, Rect(cx, cy, cx, cy)); // Bottom-Right
 
-    Mat tmp;                            // swap quadrants (Top-Left with Bottom-Right)
-    q0.copyTo(tmp);
-    q3.copyTo(q0);
-    tmp.copyTo(q3);
-    q1.copyTo(tmp);                     // swap quadrant (Top-Right with Bottom-Left)
-    q2.copyTo(q1);
-    tmp.copyTo(q2);
+	Mat tmp;                            // swap quadrants (Top-Left with Bottom-Right)
+	q0.copyTo(tmp);
+	q3.copyTo(q0);
+	tmp.copyTo(q3);
+	q1.copyTo(tmp);                     // swap quadrant (Top-Right with Bottom-Left)
+	q2.copyTo(q1);
+	tmp.copyTo(q2);
 }
 
 void imshowFFTSpectrum(string wname, const Mat& complex )
@@ -91,16 +54,16 @@ void imshowFFTSpectrum(string wname, const Mat& complex )
 	Mat planes[] = {Mat::zeros(complex.size(), CV_32F), Mat::zeros(complex.size(), CV_32F)};
 	split(complex, planes);                // planes[0] = Re(DFT(I)), planes[1] = Im(DFT(I))
 
-    magnitude(planes[0], planes[1], magI);    // sqrt(Re(DFT(I))^2 + Im(DFT(I))^2)
+	magnitude(planes[0], planes[1], magI);    // sqrt(Re(DFT(I))^2 + Im(DFT(I))^2)
 
 	// switch to logarithmic scale: log(1 + magnitude)
 	magI += Scalar::all(1.0);
-    log(magI, magI);
+	log(magI, magI);
 
 	fftShift(magI);
-    normalize(magI, magI, 1, 0, NORM_INF); // Transform the matrix with float values into a
-                                              // viewable image form (float between values 0 and 1).
-    imshow(wname, magI);
+	normalize(magI, magI, 1, 0, NORM_INF); // Transform the matrix with float values into a
+	// viewable image form (float between values 0 and 1).
+	imshow(wname, magI);
 }
 
 void computeIDFT(Mat& complex, Mat& dest)
@@ -117,9 +80,9 @@ void computeIDFT(Mat& complex, Mat& dest)
 void computeDFT(Mat& image, Mat& dest)
 {
 	Mat padded;                            //expand input image to optimal size
-    int m = getOptimalDFTSize( image.rows );
-    int n = getOptimalDFTSize( image.cols ); // on the border add zero values
-    
+	int m = getOptimalDFTSize( image.rows );
+	int n = getOptimalDFTSize( image.cols ); // on the border add zero values
+
 	copyMakeBorder(image, padded, 0, m - image.rows, 0, n - image.cols, BORDER_REPLICATE);
 
 	Mat imgf;
@@ -128,10 +91,9 @@ void computeDFT(Mat& image, Mat& dest)
 
 	//other implimentation
 	//Mat planes[] = {Mat_<float>(padded), Mat::zeros(padded.size(), CV_32F)};
-    //merge(planes, 2, dest);         // Add to the expanded another plane with zeros
+	//merge(planes, 2, dest);         // Add to the expanded another plane with zeros
 	//dft(dest, dest, DFT_COMPLEX_OUTPUT);  // furier transform
 }
-
 
 Mat createCircleMask(Size imsize, int radius)
 {
@@ -166,7 +128,6 @@ Mat createGaussFilterMask(Size imsize, int radius)
 
 	return ret;
 }
-
 
 void deconvolute(Mat& img, Mat& kernel)
 {
@@ -227,56 +188,65 @@ void fftConvolutionTest(Mat& image)
 	int a=0;createTrackbar("a",wname,&a,100);
 	int r = 20; createTrackbar("r",wname,&r,500);
 	int sw = 0; createTrackbar("sw",wname,&sw,2);
-	int key = 0;
-	Mat show;
+
 	Mat dftmat;
-	Mat destf;
+	Mat filterdFIR;
+	Mat filteredFFT;
+
+	Mat filterdFIR_8u;
+	Mat filteredFFT_8u;
+
+	int key = 0;
 	while(key!='q')
 	{
 		//reference Gaussian filter of FIR
-		GaussianBlur(imgf,destf,Size(2*r+1,2*r+1),radius2sigma(r));
+		GaussianBlur(imgf,filterdFIR,Size(2*r+1,2*r+1),radius2sigma(r));
 
 		computeDFT(image,dftmat);
-		
+
 		Mat mask;
 		Mat kernel;
 
 		if(sw == 0)
 		{
+			//Gaussian kernel
 			mask = createGaussFilterMask(dftmat.size(),r);
 			fftShift(mask);
 			computeDFT(mask,kernel);
 		}
 		else if(sw == 1)
 		{
+			//circle kernel
 			mask = createCircleMask(dftmat.size(),r);
 			fftShift(mask);
 			vector<Mat> v;
 			v.push_back(mask);
 			v.push_back(Mat::zeros(dftmat.size(),CV_32FC1));
-			
+
 			merge(v,kernel);
 		}
 		else
 		{
+			//no kernel
 			kernel = Mat::ones(dftmat.size(),CV_32FC2);
-		}		
+		}	
+
 		mulSpectrums(dftmat, kernel, dftmat, DFT_ROWS); // only DFT_ROWS accepted
 		imshowFFTSpectrum("spectrum filtered",dftmat);// show spectrum
-		
-		computeIDFT(dftmat,show);		// do inverse transform
-		
+
+		computeIDFT(dftmat,filteredFFT);		// do inverse transform
+
 		//for visualization
-		Mat dest; destf.convertTo(dest,CV_8U);
-		Mat showu;
-		show.convertTo(showu,CV_8U);
-		addWeighted(dest,a/100.0, showu, 1.0-a/100.0,0.0,dest);//0 fft, 1, FIR
-		
-		imshow(wname,dest);
+		filterdFIR.convertTo(filterdFIR_8u,CV_8U);
+		filteredFFT.convertTo(filteredFFT_8u,CV_8U);
+
+		addWeighted(filterdFIR_8u,a/100.0, filteredFFT_8u, 1.0-a/100.0,0.0,filteredFFT_8u);//0 fft, 1, FIR		
+
+		imshow(wname,filteredFFT_8u);
 		key = waitKey(1);
 	}
+	destroyAllWindows();
 }
-
 
 void fftDeconvolutionTest(Mat& image)
 {
@@ -287,39 +257,48 @@ void fftDeconvolutionTest(Mat& image)
 
 	int a=0;createTrackbar("a",wname,&a,100);
 	int r = 20; createTrackbar("r",wname,&r,500);
+	//int noise = 0; createTrackbar("noise",wname,&noise,100);
+
+	Mat dftmat;
+	Mat filterdFIR;
+	Mat filteredFFT;
+
+	Mat filterdFIR_8u;
+	Mat filteredFFT_8u;
 
 	int key = 0;
-	Mat show;
-	Mat dftmat;
-	Mat destf;
 	while(key!='q')
 	{
 		//reference Gaussian filter of FIR
-		GaussianBlur(imgf,destf,Size(2*r+1,2*r+1),radius2sigma(r));
+		GaussianBlur(imgf,filterdFIR,Size(2*r+1,2*r+1),radius2sigma(r));
 
-		computeDFT(destf,dftmat);
-		
+		//FFT input signal
+		computeDFT(filterdFIR, dftmat);
+
+		//generating kernel
 		Mat mask = createGaussFilterMask(dftmat.size(),r);
 		fftShift(mask);
 
 		Mat kernel;
 		computeDFT(mask,kernel);//generate Gaussian Kernel
-				
+
+		//deconvolution
 		deconvolute(dftmat,kernel);
-		imshowFFTSpectrum("inv spec",dftmat);
+		//deconvoluteWiener(dftmat,kernel,noise); for Wiener filter
+		imshowFFTSpectrum("spectrum filtered",dftmat);// show spectrum
 
-		computeIDFT(dftmat,show);		// do inverse transform
-		
+		computeIDFT(dftmat,filteredFFT);		// do inverse transform
+
 		//for visualization
-		Mat dest;destf.convertTo(dest,CV_8U);
+		filterdFIR.convertTo(filterdFIR_8u,CV_8U);
+		filteredFFT.convertTo(filteredFFT_8u,CV_8U);
 
-		Mat showu;
-		show.convertTo(showu,CV_8U);
-		imshow("inv",showu);
-		addWeighted(dest,a/100.0, showu, 1.0-a/100.0,0.0,dest);//0 fft, 1, FIR		
-		imshow(wname,dest);
+		addWeighted(filterdFIR_8u,a/100.0, filteredFFT_8u, 1.0-a/100.0,0.0,filteredFFT_8u);//0 fft, 1, FIR		
+
+		imshow(wname,filteredFFT_8u);
 		key = waitKey(1);
 	}
+	destroyAllWindows();
 }
 
 int main()

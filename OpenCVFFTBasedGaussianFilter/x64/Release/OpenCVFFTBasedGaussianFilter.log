@@ -1,10 +1,9 @@
-﻿2014/09/09 10:25:39 にビルドを開始しました。
+﻿2014/09/09 10:46:38 にビルドを開始しました。
      1>ノード 2 上のプロジェクト "C:\Users\Fukushima\Documents\GitHub\OpenCVFFTBasedGaussianFilter\OpenCVFFTBasedGaussianFilter\OpenCVFFTBasedGaussianFilter.vcxproj" (Build ターゲット)。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt main.cpp
          main.cpp
-     1>main.cpp(62): warning C4244: 'return' : 'int' から 'float' への変換です。データが失われる可能性があります。
-     1>main.cpp(179): warning C4305: '初期化中' : 'double' から 'float' へ切り詰めます。
+     1>main.cpp(140): warning C4305: '初期化中' : 'double' から 'float' へ切り詰めます。
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Fukushima\Documents\GitHub\OpenCVFFTBasedGaussianFilter\x64\Release\OpenCVFFTBasedGaussianFilter.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Fukushima\Documents\GitHub\OpenCVFFTBasedGaussianFilter\x64\Release\OpenCVFFTBasedGaussianFilter.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Fukushima\Documents\GitHub\OpenCVFFTBasedGaussianFilter\x64\Release\OpenCVFFTBasedGaussianFilter.lib" /MACHINE:X64 x64\Release\main.obj
          コード生成しています。
@@ -14,4 +13,4 @@
 
 ビルドに成功しました。
 
-経過時間 00:00:01.56
+経過時間 00:00:01.62

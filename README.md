@@ -12,8 +12,8 @@ The seconde demo can deconvolute (i.e. deblur) Gaussian blur with normal or Wein
 
 The code is tested on OpenCV2.4.9.  
 
-Results
-=======
+Results (convolution)
+====================
 ![input image](result/conv_input.png "Input image")  
 ###Input image  
 ![input spec](result/conv_input_spec.png "Input image Spectrum")  
@@ -24,6 +24,8 @@ Results
 ![Gaussian convolution spec](result/conv_Gaussian_spec.png "Gaussian convolution spectrum")  
 ###Gaussian convoluted spectrum
 
+Results (deconvolution)
+=======================
 ![Deconvolution image](result/deconv_Gaussian.png "Gaussian deconvoluted image")  
 ###Gaussian deconvoluted image  
 

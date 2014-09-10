@@ -35,9 +35,9 @@ Results (deconvolution)
 ###Noisy Gaussian deconvoluted Spectrum  (Gaussian noise sigma = 5)
 
 ![N-Deconvolution image](result/deconv_noisy_Weiner.png "Noisy Weiner deconvoluted image")  
-###Noisy Gaussian deconvoluted image  (Gaussian noise sigma = 5)
+###Noisy Weiner deconvoluted image  (Gaussian noise sigma = 5)
 ![N-Deconvolution spec](result/deconv_noisy_Weiner_spec.png "Noisy Weiner deconvoluted spectrum")  
-###Noisy Gaussian deconvoluted spectrum  (Gaussian noise sigma = 5)
+###Noisy Weiner deconvoluted spectrum  (Gaussian noise sigma = 5)
 
 Todo
 ====

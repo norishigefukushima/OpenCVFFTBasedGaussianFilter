@@ -48,17 +48,20 @@ void fftShift(Mat magI)
 	tmp.copyTo(q2);
 }
 
+void magnitudeFFT(const Mat& complex, Mat& dest)
+{
+	vector<Mat> planes;
+	split(complex, planes);                // planes[0] = Re(DFT(I)), planes[1] = Im(DFT(I))
+	magnitude(planes[0], planes[1], dest);    // sqrt(Re(DFT(I))^2 + Im(DFT(I))^2)
+}
+
 void imshowFFTSpectrum(string wname, const Mat& complex )
 {
 	Mat magI;
-	Mat planes[] = {Mat::zeros(complex.size(), CV_32F), Mat::zeros(complex.size(), CV_32F)};
-	split(complex, planes);                // planes[0] = Re(DFT(I)), planes[1] = Im(DFT(I))
-
-	magnitude(planes[0], planes[1], magI);    // sqrt(Re(DFT(I))^2 + Im(DFT(I))^2)
-
+	magnitudeFFT(complex, magI);// sqrt(Re(DFT(I))^2 + Im(DFT(I))^2)
+	
 	// switch to logarithmic scale: log(1 + magnitude)
-	magI += Scalar::all(1.0);
-	log(magI, magI);
+	log(magI+1.0, magI);
 
 	fftShift(magI);
 	normalize(magI, magI, 1, 0, NORM_INF); // Transform the matrix with float values into a
@@ -86,7 +89,7 @@ void computeDFT(Mat& image, Mat& dest)
 	copyMakeBorder(image, padded, 0, m - image.rows, 0, n - image.cols, BORDER_REPLICATE);
 
 	Mat imgf;
-	image.convertTo(imgf,CV_32F);	
+	padded.convertTo(imgf,CV_32F);	
 	dft(imgf, dest, DFT_COMPLEX_OUTPUT);  // furier transform
 
 	//other implimentation
@@ -257,7 +260,9 @@ void fftDeconvolutionTest(Mat& image)
 
 	int a=0;createTrackbar("a",wname,&a,100);
 	int r = 20; createTrackbar("r",wname,&r,500);
-	//int noise = 0; createTrackbar("noise",wname,&noise,100);
+	int noise_sigma = 0; createTrackbar("noise sigma",wname,&noise_sigma,1000);
+	int sw = 0; createTrackbar("switch",wname, &sw,1);//switch deconv method
+	int snr = 0; createTrackbar("snr:Weiner",wname, &snr,10000);//parameter for Weiner filter
 
 	Mat dftmat;
 	Mat filterdFIR;
@@ -267,11 +272,17 @@ void fftDeconvolutionTest(Mat& image)
 	Mat filteredFFT_8u;
 
 	int key = 0;
+
+	Mat GaussNoise = Mat::zeros(imgf.size(),CV_32F);
 	while(key!='q')
 	{
 		//reference Gaussian filter of FIR
 		GaussianBlur(imgf,filterdFIR,Size(2*r+1,2*r+1),radius2sigma(r));
 
+		//add Gaussian noise
+		randn(GaussNoise,0,noise_sigma/10.0);
+		filterdFIR += GaussNoise;
+		
 		//FFT input signal
 		computeDFT(filterdFIR, dftmat);
 
@@ -282,9 +293,17 @@ void fftDeconvolutionTest(Mat& image)
 		Mat kernel;
 		computeDFT(mask,kernel);//generate Gaussian Kernel
 
+
 		//deconvolution
-		deconvolute(dftmat,kernel);
-		//deconvoluteWiener(dftmat,kernel,noise); for Wiener filter
+		if(sw==0)
+		{
+			deconvolute(dftmat,kernel);//normal deconvolution
+		}
+		else
+		{
+			deconvoluteWiener(dftmat,kernel,snr*snr/100.0);//for Wiener filter
+		}
+
 		imshowFFTSpectrum("spectrum filtered",dftmat);// show spectrum
 
 		computeIDFT(dftmat,filteredFFT);		// do inverse transform
